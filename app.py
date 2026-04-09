@@ -9,8 +9,7 @@ from difflib import get_close_matches
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 app = Flask(__name__)
 app.secret_key = "supersecret"
-app.config["SESSION_TYPE"] = "filesystem"
-Session(app)
+app.secret_key = "h7@K!92kdL#pQz$8xY"
 
 # ------------------ Load Data (unchanged) ------------------
 training = pd.read_csv('Data/Training.csv')
