@@ -46,7 +46,7 @@ with open(os.path.join(BASE_DIR, "MasterData", "symptom_Description.csv")) as f:
         if len(row) >= 2:
             description_list[row[0]] = row[1]
 
-with open(os.path.join(BASE_DIR, "MasterData", "symptom_severity.csv")) as f:
+with open(os.path.join(BASE_DIR, "MasterData", "Symptom_severity.csv")) as f:
     for row in csv.reader(f):
         try:
             severityDictionary[row[0]] = int(row[1])
