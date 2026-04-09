@@ -1,19 +1,24 @@
 from flask import Flask, render_template, request, jsonify, session
-from flask_session import Session
-import re, random, pandas as pd, numpy as np, csv, warnings
+import os, re, random, pandas as pd, numpy as np, csv, warnings
 from sklearn import preprocessing
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from difflib import get_close_matches
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
-app = Flask(__name__)
-app.secret_key = "supersecret"
-app.secret_key = "h7@K!92kdL#pQz$8xY"
 
-# ------------------ Load Data (unchanged) ------------------
-training = pd.read_csv('Data/Training.csv')
-testing = pd.read_csv('Data/Testing.csv')
+app = Flask(__name__)
+app.secret_key = "your_strong_secret_key_change_this"  # ✅ Strong secret key
+
+# ✅ FIX 1: Flask-Session (filesystem) REMOVED — use default Flask cookie session
+# app.config["SESSION_TYPE"] = "filesystem"  <-- YE HATA DIYA
+
+# ✅ FIX 2: Absolute paths for CSV files (Render pe relative paths fail hoti hain)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# ------------------ Load Data ------------------
+training = pd.read_csv(os.path.join(BASE_DIR, 'Data/Training.csv'))
+testing  = pd.read_csv(os.path.join(BASE_DIR, 'Data/Testing.csv'))
 training.columns = training.columns.str.replace(r"\.\d+$", "", regex=True)
 testing.columns  = testing.columns.str.replace(r"\.\d+$", "", regex=True)
 training = training.loc[:, ~training.columns.duplicated()]
@@ -32,18 +37,18 @@ severityDictionary, description_list, precautionDictionary = {}, {}, {}
 symptoms_dict = {symptom: idx for idx, symptom in enumerate(x)}
 
 def getDescription():
-    with open('MasterData/symptom_Description.csv') as csv_file:
+    with open(os.path.join(BASE_DIR, 'MasterData/symptom_Description.csv')) as csv_file:
         for row in csv.reader(csv_file):
             description_list[row[0]] = row[1]
 
 def getSeverityDict():
-    with open('MasterData/symptom_severity.csv') as csv_file:
+    with open(os.path.join(BASE_DIR, 'MasterData/symptom_severity.csv')) as csv_file:
         for row in csv.reader(csv_file):
             try: severityDictionary[row[0]] = int(row[1])
             except: pass
 
 def getprecautionDict():
-    with open('MasterData/symptom_precaution.csv') as csv_file:
+    with open(os.path.join(BASE_DIR, 'MasterData/symptom_precaution.csv')) as csv_file:
         for row in csv.reader(csv_file):
             precautionDictionary[row[0]] = [row[1], row[2], row[3], row[4]]
 
@@ -104,7 +109,6 @@ def chat():
     user_msg = request.json['message']
     step = session.get('step', 'welcome')
 
-    # replicate each console step
     if step == 'welcome':
         session['step'] = 'name'
         return jsonify(reply="🤖 Welcome to HealthCare ChatBot!\n👉 What is your name?")
@@ -147,7 +151,6 @@ def chat():
         return jsonify(reply="👉 Any family history of similar illness?")
     elif step == 'family':
         session['family'] = user_msg
-        # guided disease-specific questions
         disease = session['pred_disease']
         disease_symptoms = list(training[training['prognosis'] == disease].iloc[0][:-1].index[
             training[training['prognosis'] == disease].iloc[0][:-1] == 1
@@ -157,14 +160,12 @@ def chat():
         session['step'] = 'guided'
         return ask_next_symptom()
     elif step == 'guided':
-        # record yes/no
         idx = session['ask_index'] - 1
         if idx >= 0 and idx < len(session['disease_syms']):
             if user_msg.strip().lower() == 'yes':
                 session['symptoms'].append(session['disease_syms'][idx])
         return ask_next_symptom()
     elif step == 'final':
-        # already answered all guided
         return final_prediction()
 
 def ask_next_symptom():
