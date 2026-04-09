@@ -1,5 +1,4 @@
 flask
-Flask-Session
 pandas
 numpy
 scikit-learn
